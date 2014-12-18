@@ -1,0 +1,9 @@
+bak/
+*.sqlite
+*.log
+*.log*
+presets/
+received/
+tasks/
+*.pyc
+secretfile.yml

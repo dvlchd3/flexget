@@ -1,0 +1,400 @@
+secrets: secretfile.yml
+templates:
+
+  global:
+    if:
+      - "'torrentleech' in url":
+          transmission:
+            main_file_only: yes
+            ratio: 3.0
+            host: localhost
+            port: 9091
+            username: '{{ secrets.transmission.username }}'
+            password: '{{ secrets.transmission.password }}'
+      - "'torrentleech' not in url":
+          transmission:
+            main_file_only: yes
+            ratio: 1.0
+            host: localhost
+            port: 9091
+            username: '{{ secrets.transmission.username }}'
+            password: '{{ secrets.transmission.password }}'
+    free_space:
+      path: /media/plex2
+      space: 25000      # 25GB
+    pathscrub: windows  # Windows (Samba) safe filenames
+    
+    regexp:
+      reject:
+        - (s|d)ub(s|bed)?\b: {from: title}                    # Block any subbed/dubbed/etc videos
+        - \b(duo|tri|quadri|tetra|penta)logy\b: {from: title} # Block series, only accept one at a time
+        - \b3-?D\b: {from: title}                             # I don't have any 3D displays
+        - \btrailer\b: {from: title}                          # I've gotten a few trailers that matched as movies. VERY annoying
+        - \bR5\b: {from: title}                               # The following are poor quality types that somehow got through the quality
+        - \bWEBSCR\b: {from: title}                           # features usually due to the title including a keyword like "720p" as well
+        - \bscreener\b: {from: title}
+        - \bTS\b: {from: title}
+        - \bCam\b: {from: title}
+        - '{C_P}': {from: title}                              # The following are groups with poor quality releases
+        - TrTd TeaM: {from: title}
+        - \[TNTVillage\]: {from: title}
+        - \[facepalm\]: {from: title}
+        - \bASAP\b: {from: title}
+        - the.day.of.the.doctor                               # The following are titles that caused me issues from plugins
+        
+    torrent_alive:
+      min_seeds: 10
+      reject_for: 3 hours
+      
+    content_filter:
+      require:
+        - '*.avi'
+        - '*.mkv'
+        - '*.mpg'
+        - '*.mp4'
+        - '*.wmv'
+        - '*.r0*'
+        - '*.part0*'
+      reject:
+        - 'password.txt'
+        
+    domain_delay:
+      www.torrentleech.org: 10 seconds
+      rss.torrentleech.org: 10 minutes
+      bt-chat.com: 5 seconds
+      torrentz.eu: 10 seconds
+      
+    verify_ssl_certificates: no
+    magnets: no
+    
+  tv-global:
+    inputs:
+      - rss: { url: 'http://rss.torrentleech.org/{{ secrets.torrentleech.rss_key }}', other_fields: [category] }
+      - rss: { url: 'http://www.torlock.com/television/rss.xml', silent: yes}
+      - rss: { url: 'http://torrentz.eu/feed_verified?q=tv', silent: yes }
+      - rss: { url: 'http://showrss.info/feeds/all.rss', silent: yes }
+      - rss: { url: 'http://rss.bt-chat.com/?group=3', silent: yes }
+    
+    if:
+      - "has_field('category')":
+          regexp:
+            reject_excluding:
+              - '^Episodes( HD)?$': {from: category}
+    archive: [tv]
+    content_size:
+      max: 5000
+      min: 20
+
+    exists_series:
+      - "/media/plex/TV/"
+      - "/media/plex/Jude/TV"
+      - "/media/plex2/TV"
+      - "/media/plex2/Jude/TV"
+      - "/media/plex2/staging/"
+      
+    thetvdb_lookup: yes
+    trakt_lookup: yes
+    
+    pushbullet:
+      apikey: '{{ secrets.pushbullet.apikey }}'
+      title: "[Flexget] {{task}}"
+      body: "{{ tvdb_series_name|default(series_name) }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name }}{% endif %}\n{{ quality }}"
+      url: "{% if trakt_series_url is defined and trakt_season is defined and trakt_episode is defined %}{{ trakt_series_url }}/season/{{ trakt_season }}/episode/{{ trakt_episode }}{% endif %}"
+    
+    set:
+      queuetotop: yes
+      path: >
+        /media/plex2/TV/{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }}/{% if series_id_type == 'ep' %}Season {{ series_season }}/{% endif %}
+      content_filename: >
+        {{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name|replace('/', '_')|replace(':', ' -') }}{% endif %} - {{ quality }}
+      label: tv
+      
+  tv-shows-find:
+    discover:
+      no_entries_ok: yes
+      what: [filler: yes]
+      from:
+        - torrentleech:
+            rss_key: '{{ secrets.torrentleech.rss_key }}'
+            username: '{{ secrets.torrentleech.username }}'
+            password: '{{ secrets.torrentleech.password }}'
+            category: ['Episodes HD', 'Episodes']
+        - flexget_archive: [tv]
+    
+  movies-global:
+    inputs:
+      - rss: { url: 'http://rss.torrentleech.org/{{ secrets.torrentleech.rss_key }}', other_fields: [category] }
+      - rss: { url: 'http://www.torlock.com/movies/rss.xml', silent: yes }
+      - rss: { url: 'http://torrentz.eu/feed_verified?q=movies', silent: yes }
+    if:
+      - "has_field('category')":
+          regexp:
+            reject_excluding:
+              - '^(HD|BDRip|DVDRip.DVDScreener|DVD-R|Documentaries)$': {from: category}
+              
+    archive: [movies]
+    regexp:
+      reject:
+        - s\d+e\d+: {from: title}
+        - '\d{4}.\d{2}.\d{2}': {from: title}
+        - \d+x\d+: {from: title}
+        - \baac2: {from: title} # No 2 channel audio
+    plugin_priority:
+      regexp: 176
+      if: 177
+      proper_movies: 171
+    content_size:
+      max: 20000
+      min: 1000
+    imdb_lookup: yes
+    seen_movies: strict
+    exists_movie:
+      - /media/plex/Movies
+      - /media/plex/Jude/Movies
+      - /media/plex2/Movies
+      - /media/plex2/Jude/Movies
+    proper_movies: yes
+    set:
+      queuetotop: yes
+      path: "/media/plex2/Movies/{{ imdb_name|replace('/', '_')|replace(':', ' -') }} ({{ imdb_year }})"
+      content_filename: |
+        {{ imdb_name|replace('/', '_')|replace(':', ' -') }} ({{ imdb_year }}) - {{ quality }}
+    pushbullet:
+      apikey: '{{ secrets.pushbullet.apikey }}'
+      title: "[Flexget] {{task}}"
+      body: "{{ imdb_name }} ({{ imdb_year }})\n{{ quality }}"
+      url: "{% if imdb_url %}{{ imdb_url }}{% endif %}"
+      
+  movies-discover:
+    discover:
+      from:
+        - torrentleech:
+            rss_key: '{{ secrets.torrentleech.rss_key }}'
+            username: '{{ secrets.torrentleech.username }}'
+            password: '{{ secrets.torrentleech.password }}'
+            category: ['HD', 'BDRip', 'DVDRip', 'DVDR', 'Documentaries']
+        - flexget_archive: [movies]
+        - kat:
+            category: movies
+            verified: yes
+      what: [ filler: yes ]
+      
+  movies-queued:
+    movie_queue: yes
+    template: movies-discover
+    disable_plugin:
+      - seen_movies
+    discover:
+      what:
+        - emit_movie_queue: yes
+      trakt_remove:
+        username: '{{ secrets.trakt.username }}'
+        password: '{{ secrets.trakt.password }}'
+        api_key: '{{ secrets.trakt.api_key }}'
+        list: Movie Queue
+      trakt_add:
+        username: '{{ secrets.trakt.username }}'
+        password: '{{ secrets.trakt.password }}'
+        api_key: '{{ secrets.trakt.api_key }}'
+        list: watchlist
+      set:
+        label: my-movies
+
+tasks:
+  TV-Shows:
+    priority: 10
+    template: [tv-global]
+    sequence:
+      - configure_series:
+          settings:
+            target: 720p+ hdtv+
+            timeframe: 5 days
+            quality: 720p+ dvdscr+
+            tracking: backfill
+          from:
+            trakt_list:
+              username: '{{ secrets.trakt.username }}'
+              password: '{{ secrets.trakt.password }}'
+              api_key: '{{ secrets.trakt.api_key }}'
+              custom: Favorite TV
+      - configure_series:
+          settings:
+            target: 720p+ dvdscr+
+            timeframe: 3 days
+            quality: 480p+ webrip+
+            tracking: backfill
+          from:
+            trakt_list:
+              username: '{{ secrets.trakt.username }}'
+              password: '{{ secrets.trakt.password }}'
+              api_key: '{{ secrets.trakt.api_key }}'
+              custom: Following TV
+              
+  My-TV-Shows-Find-Next-Favorite:
+    template: [tv-global, tv-shows-find]
+    disable_plugin: inputs
+    discover:
+      interval: 2 hours
+      from:
+        - torrentleech:
+            rss_key: '{{ secrets.torrentleech.rss_key }}'
+            username: '{{ secrets.torrentleech.username }}'
+            password: '{{ secrets.torrentleech.password }}'
+            category: ['Episodes HD', 'Episodes']
+        - flexget_archive: [tv]
+      what:
+        - trakt_emit:
+            username: '{{ secrets.trakt.username }}'
+            password: '{{ secrets.trakt.password }}'
+            api_key: '{{ secrets.trakt.api_key }}'
+            context: collected
+            position: next
+            list: Favorite TV
+    all_series:
+      target: 720p+ hdtv+
+      timeframe: 5 days
+      quality: 720p+ dvdscr+
+      tracking: backfill
+  My-TV-Shows-Find-Next-Following:
+    template: [tv-global, tv-shows-find]
+    disable_plugin: inputs
+    discover:
+      interval: 2 hours
+      from:
+        - torrentleech:
+            rss_key: '{{ secrets.torrentleech.rss_key }}'
+            username: '{{ secrets.torrentleech.username }}'
+            password: '{{ secrets.torrentleech.password }}'
+            category: ['Episodes HD', 'Episodes']
+        - flexget_archive: [tv]
+      what:
+        - trakt_emit:
+            username: '{{ secrets.trakt.username }}'
+            password: '{{ secrets.trakt.password }}'
+            api_key: '{{ secrets.trakt.api_key }}'
+            list: Following TV
+            context: collected
+            position: next
+    all_series:
+      target: 720p+ dvdscr+
+      timeframe: 3 days
+      quality: 480p+ webrip+
+      tracking: backfill
+      
+  TV-Shows-Find-Missing:
+    template:
+      - tv-global
+      - tv-shows-find
+    disable_plugin: inputs
+    discover:
+      what:
+        - emit_series:
+            backfill: yes
+      from: [ filler: yes ]
+    sequence:
+      - configure_series:
+          settings:
+            target: 720p+ hdtv+
+            timeframe: 5 days
+            quality: 720p+ dvdscr+
+            tracking: backfill
+            propers: no
+            upgrade: no
+          from:
+            trakt_list:
+              username: '{{ secrets.trakt.username }}'
+              password: '{{ secrets.trakt.password }}'
+              api_key: '{{ secrets.trakt.api_key }}'
+              custom: Favorite TV
+      - configure_series:
+          settings:
+            target: 720p+ dvdscr+
+            timeframe: 3 days
+            quality: 480p+ webrip+
+            tracking: backfill
+            propers: no
+            upgrade: no
+          from:
+            trakt_list:
+              username: '{{ secrets.trakt.username }}'
+              password: '{{ secrets.trakt.password }}'
+              api_key: '{{ secrets.trakt.api_key }}'
+              custom: Following TV
+              
+  Series-Premieres:
+    priority: 40
+    template:
+      - tv-global
+    require_field:
+      - tvdb_genres
+      - tvdb_first_air_date
+    torrent_alive:
+      min_seeds: 50
+    regexp:
+      reject:
+        - documentary: {from: tvdb_genres}
+        - talk show: {from: tvdb_genres}
+        - game show: {from: tvdb_genres}
+        - reality: {from: tvdb_genres}
+        - crime: {from: tvdb_genres}
+        - children: {from: tvdb_genres}
+        - home and garden: {from: tvdb_genres}
+    if:
+      # Block these genres only if they are the ONLY genre listed in
+      # tvdb_genres. For example, this will not block a show that's both
+      # "Comedy" and "Drama" but it will block a show that is just "Drama"
+      - "tvdb_genres == ['Drama']": reject
+      # Block premieres that weren't within the last 60 days
+      - tvdb_first_air_date and tvdb_first_air_date < now - timedelta(days=60): reject
+    series_premiere:
+      timeframe: 1 days
+      quality: 720p+ hdtv+
+      
+    set:
+      queuetotop: no
+      path: >
+        /media/plex2/TV-Premieres/{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }}/{% if series_id_type == 'ep' %}Season {{ series_season }}/{% endif %}
+      content_filename: >
+        {{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name|replace('/', '_')|replace(':', ' -') }}{% endif %} - {{ quality }}
+      label: tv-premiere
+      
+  Series-Premieres-Track:
+    priority: 50
+    template:
+      - tv-global
+    configure_series:
+      settings:
+        target: 720p+ hdtv+
+        timeframe: 3 days
+        quality: webrip+
+      from:
+        listdir:
+          - "/media/plex2/TV-Premieres"
+    set:
+      queuetotop: no
+      path: >
+        /media/plex2/TV-Premieres/{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }}/{% if series_id_type == 'ep' %}Season {{ series_season }}/{% endif %}
+      content_filename: >
+        {{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -') }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name|replace('/', '_')|replace(':', ' -') }}{% endif %} - {{ quality }}
+      label: tv-premiere-track
+      
+  Movie-Queue:
+    priority: 100
+    template: no_global
+    trakt_list:
+      username: '{{ secrets.trakt.username }}'
+      password: '{{ secrets.trakt.password }}'
+      api_key: '{{ secrets.trakt.api_key }}'
+      custom: Movie Queue
+    no_entries_ok: yes
+    accept_all: yes
+    queue_movies: yes
+
+
+schedules:
+  - tasks: [ 'TV-Shows' ]
+    schedule:
+      minute: 3,18,33,48
+  - tasks: [ 'TV-Shows-Find-Next-*' ]
+    interval:
+      hours: 2
