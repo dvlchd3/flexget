@@ -7,3 +7,4 @@ received/
 tasks/
 *.pyc
 secretfile.yml
+/temp
