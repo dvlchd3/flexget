@@ -111,7 +111,6 @@ templates:
       
   tv-shows-find:
     discover:
-      no_entries_ok: yes
       what: [filler: yes]
       from:
         - torrentleech:
@@ -187,18 +186,18 @@ templates:
     discover:
       what:
         - emit_movie_queue: yes
-      trakt_remove:
-        username: '{{ secrets.trakt.username }}'
-        password: '{{ secrets.trakt.password }}'
-        api_key: '{{ secrets.trakt.api_key }}'
-        list: Movie Queue
-      trakt_add:
-        username: '{{ secrets.trakt.username }}'
-        password: '{{ secrets.trakt.password }}'
-        api_key: '{{ secrets.trakt.api_key }}'
-        list: watchlist
-      set:
-        label: my-movies
+    trakt_remove:
+      username: '{{ secrets.trakt.username }}'
+      password: '{{ secrets.trakt.password }}'
+      api_key: '{{ secrets.trakt.api_key }}'
+      list: Movie Queue
+    trakt_add:
+      username: '{{ secrets.trakt.username }}'
+      password: '{{ secrets.trakt.password }}'
+      api_key: '{{ secrets.trakt.api_key }}'
+      list: watchlist
+    set:
+      label: my-movies
 
 tasks:
   TV-Shows:
@@ -386,7 +385,6 @@ tasks:
       password: '{{ secrets.trakt.password }}'
       api_key: '{{ secrets.trakt.api_key }}'
       custom: Movie Queue
-    no_entries_ok: yes
     accept_all: yes
     queue_movies: yes
 
