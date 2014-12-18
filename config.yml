@@ -186,6 +186,7 @@ templates:
     discover:
       what:
         - emit_movie_queue: yes
+      from: [ filler: yes ]
     trakt_remove:
       username: '{{ secrets.trakt.username }}'
       password: '{{ secrets.trakt.password }}'
