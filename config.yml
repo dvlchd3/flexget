@@ -70,10 +70,10 @@ templates:
   tv-global:
     inputs:
       - rss: { url: 'http://rss.torrentleech.org/{{ secrets.torrentleech.rss_key }}', other_fields: [category] }
-      - rss: { url: 'http://www.torlock.com/television/rss.xml', silent: yes}
-      - rss: { url: 'http://torrentz.eu/feed_verified?q=tv', silent: yes }
-      - rss: { url: 'http://showrss.info/feeds/all.rss', silent: yes }
-      - rss: { url: 'http://rss.bt-chat.com/?group=3', silent: yes }
+      #- rss: { url: 'http://www.torlock.com/television/rss.xml', silent: yes}
+      #- rss: { url: 'http://torrentz.eu/feed_verified?q=tv', silent: yes }
+      #- rss: { url: 'http://showrss.info/feeds/all.rss', silent: yes }
+      #- rss: { url: 'http://rss.bt-chat.com/?group=3', silent: yes }
     
     if:
       - "has_field('category')":
@@ -123,8 +123,8 @@ templates:
   movies-global:
     inputs:
       - rss: { url: 'http://rss.torrentleech.org/{{ secrets.torrentleech.rss_key }}', other_fields: [category] }
-      - rss: { url: 'http://www.torlock.com/movies/rss.xml', silent: yes }
-      - rss: { url: 'http://torrentz.eu/feed_verified?q=movies', silent: yes }
+      #- rss: { url: 'http://www.torlock.com/movies/rss.xml', silent: yes }
+      #- rss: { url: 'http://torrentz.eu/feed_verified?q=movies', silent: yes }
     if:
       - "has_field('category')":
           regexp:
