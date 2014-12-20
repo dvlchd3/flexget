@@ -178,7 +178,7 @@ templates:
             verified: yes
       what: [ filler: yes ]
       
-  movies-queued:
+  movies-queue:
     movie_queue: yes
     template: movies-discover
     disable_plugin:
